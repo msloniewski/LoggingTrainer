@@ -1,4 +1,6 @@
 __pycache__/
 *.py[cod]
 .venv/
-
+.venv-audio/
+.venv-kokoro/
+.venv-tools/

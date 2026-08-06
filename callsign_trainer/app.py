@@ -4,7 +4,7 @@ import random
 import tkinter as tk
 from tkinter import ttk
 
-from .callsigns import callsign_to_phonetics, generate_callsign, normalize_callsign
+from .callsigns import generate_callsign, normalize_callsign
 from .speech import SpeechEngine
 
 
@@ -67,7 +67,7 @@ class TrainerApp(tk.Tk):
         if self._speech.error:
             self.status.set(self._speech.error)
             return
-        self._speech.say(callsign_to_phonetics(self._callsign))
+        self._speech.say(self._callsign)
 
     def _submit(self, _event: object | None = None) -> None:
         if not self._callsign:
@@ -98,4 +98,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

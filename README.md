@@ -17,13 +17,30 @@ The launcher creates `.venv` when needed, installs the dependencies, and starts
 the trainer. Set `PYTHON` to choose the Python executable used to create the
 environment, for example `PYTHON=python3.12 ./run.sh`.
 
-Linux speech may also require a system speech backend such as eSpeak NG:
+Linux audio playback requires PulseAudio's `paplay` or ALSA's `aplay`:
 
 ```bash
-sudo apt install python3-tk espeak-ng libespeak1
+sudo apt install python3-tk pulseaudio-utils
 ```
 
 Keyboard controls: Enter checks an answer and F2 repeats the callsign.
+
+## Audio assets
+
+The trainer assembles callsigns from pre-generated NATO phonetic WAV files in
+`assets/audio`. Generate or replace them locally with Kokoro:
+
+```bash
+./run.sh --generate-audio
+```
+
+The first run uses `uv` to create a Python 3.12 `.venv-kokoro`, installs Kokoro,
+and downloads its voice model. The generator creates three delivery speeds for
+each letter, digit, and the word `stroke`. Existing files are skipped; pass
+`--force` to regenerate them. Kokoro English generation requires eSpeak NG; on
+Debian/Ubuntu install it with `sudo apt install espeak-ng`.
+
+The included voice assets are AI-generated.
 
 ## Current scope
 
