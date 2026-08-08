@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .callsigns import generate_callsign, normalize_callsign
-from .speech import SpeechEngine
+from .speech import SPEEDS, SpeechEngine
 
 
 class TrainerApp(tk.Tk):
@@ -25,7 +25,7 @@ class TrainerApp(tk.Tk):
         self.answer = tk.StringVar()
         self.status = tk.StringVar(value="Press Start to hear the first callsign.")
         self.score = tk.StringVar(value="Score: 0 / 0")
-        self.speed = tk.IntVar(value=145)
+        self.speed = tk.IntVar(value=1)
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self._close)
@@ -49,6 +49,13 @@ class TrainerApp(tk.Tk):
         ttk.Button(buttons, text="Check (Enter)", command=self._submit).grid(row=0, column=2, padx=5)
         self.bind("<F2>", lambda _event: self._repeat())
 
+        speeds = ttk.LabelFrame(root, text="Voice speed", padding=(12, 6))
+        speeds.pack(pady=(18, 0))
+        for column, (label, variant) in enumerate(SPEEDS):
+            ttk.Radiobutton(speeds, text=label, variable=self.speed, value=variant).grid(
+                row=0, column=column, padx=8
+            )
+
         ttk.Separator(root).pack(fill="x", pady=20)
         ttk.Label(root, textvariable=self.status, anchor="center", wraplength=500).pack(fill="x")
         ttk.Label(root, textvariable=self.score, font=("TkDefaultFont", 12, "bold")).pack(pady=(14, 0))
@@ -67,7 +74,7 @@ class TrainerApp(tk.Tk):
         if self._speech.error:
             self.status.set(self._speech.error)
             return
-        self._speech.say(self._callsign)
+        self._speech.say(self._callsign, self.speed.get())
 
     def _submit(self, _event: object | None = None) -> None:
         if not self._callsign:

@@ -30,6 +30,21 @@ class SpeechEngineTests(unittest.TestCase):
             with wave.open(str(destination), "rb") as phrase:
                 self.assertEqual(phrase.getnframes(), 290)
 
+    def test_build_wav_uses_selected_speed_variant(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            asset_dir = Path(directory)
+            self._write_clip(asset_dir / "A-1.wav", frames=100)
+            self._write_clip(asset_dir / "A-2.wav", frames=250)
+            destination = asset_dir / "phrase.wav"
+
+            engine = SpeechEngine.__new__(SpeechEngine)
+            engine._asset_dir = asset_dir
+            engine._gap_ms = 90
+            engine._build_wav("A", destination, speed=2)
+
+            with wave.open(str(destination), "rb") as phrase:
+                self.assertEqual(phrase.getnframes(), 250)
+
     def test_missing_assets_report_generation_command(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             engine = SpeechEngine(asset_dir=Path(directory))

@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import argparse
-from array import array
 from pathlib import Path
-import sys
+import shutil
+import subprocess
 import wave
 
 from callsign_trainer.callsigns import PHONETIC
@@ -13,7 +13,7 @@ from callsign_trainer.callsigns import PHONETIC
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_DIR = PROJECT_DIR / "assets" / "audio"
-VARIANT_SPEEDS = (1.08, 1.15, 1.02)
+VARIANT_SPEEDS = (1.0, 1.25, 1.5)
 
 
 def _asset_name(character: str, variant: int) -> str:
@@ -21,44 +21,62 @@ def _asset_name(character: str, variant: int) -> str:
     return f"{token}-{variant}.wav"
 
 
-def _trim_silence(path: Path, padding_ms: int = 45) -> None:
-    with wave.open(str(path), "rb") as source:
-        params = source.getparams()
-        frames = source.readframes(params.nframes)
+def _trim_silence(path: Path, padding_ms: int = 12) -> None:
+    trimmed = path.with_name(f"{path.stem}.trimmed.wav")
+    padding = padding_ms / 1000
+    trim_start = (
+        "silenceremove="
+        f"start_periods=1:start_duration=0.005:start_threshold=-40dB:start_silence={padding}"
+    )
+    # Trim the end in reverse so internal pauses are never mistaken for trailing silence.
+    audio_filter = f"{trim_start},areverse,{trim_start},areverse"
 
-    if params.nchannels != 1 or params.sampwidth != 2 or not frames:
-        raise ValueError(f"Expected 16-bit mono PCM WAV from Kokoro, got {params}")
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(path),
+                "-af",
+                audio_filter,
+                "-ac",
+                "1",
+                "-ar",
+                "24000",
+                "-c:a",
+                "pcm_s16le",
+                str(trimmed),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip() or f"FFmpeg exited with {result.returncode}")
 
-    samples = array("h")
-    samples.frombytes(frames)
-    if sys.byteorder != "little":
-        samples.byteswap()
-
-    peak = max(abs(sample) for sample in samples)
-    threshold = max(250, int(peak * 0.025))
-    audible = [index for index, sample in enumerate(samples) if abs(sample) >= threshold]
-    if not audible:
-        raise ValueError(f"Generated audio is silent: {path}")
-
-    padding = params.framerate * padding_ms // 1000
-    start = max(0, audible[0] - padding)
-    end = min(len(samples), audible[-1] + padding + 1)
-    trimmed = samples[start:end]
-    if sys.byteorder != "little":
-        trimmed.byteswap()
-
-    with wave.open(str(path), "wb") as destination:
-        destination.setparams(params._replace(nframes=0))
-        destination.writeframes(trimmed.tobytes())
+        with wave.open(str(trimmed), "rb") as source:
+            params = source.getparams()
+        if params.nchannels != 1 or params.sampwidth != 2 or not params.nframes:
+            raise ValueError(f"FFmpeg produced an invalid WAV: {params}")
+        trimmed.replace(path)
+    finally:
+        trimmed.unlink(missing_ok=True)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--voice", default="af_heart", help="Kokoro voice")
+    parser.add_argument("--voice", default="am_michael", help="Kokoro voice")
     parser.add_argument("--variants", type=int, default=3, choices=range(1, 4))
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--force", action="store_true", help="replace existing assets")
     args = parser.parse_args()
+
+    if not shutil.which("ffmpeg"):
+        parser.error("FFmpeg is required to trim generated audio")
 
     import numpy as np
     import soundfile as sf

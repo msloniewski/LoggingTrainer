@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import queue
-import random
 import shutil
 import subprocess
 import sys
@@ -15,11 +13,13 @@ import wave
 
 
 ASSET_DIR = Path(__file__).resolve().parents[1] / "assets" / "audio"
+SPEEDS = (("Normal", 1), ("Fast", 2), ("Super Fast", 3))
+SPEED_VARIANTS = {variant for _label, variant in SPEEDS}
 
 
 class SpeechEngine:
-    def __init__(self, gap_ms: int = 90, asset_dir: Path = ASSET_DIR) -> None:
-        self._items: queue.Queue[str | None] = queue.Queue()
+    def __init__(self, gap_ms: int = 35, asset_dir: Path = ASSET_DIR) -> None:
+        self._items: queue.Queue[tuple[str, int] | None] = queue.Queue()
         self._gap_ms = gap_ms
         self._asset_dir = asset_dir
         self._error = self._validate()
@@ -30,17 +30,23 @@ class SpeechEngine:
     def error(self) -> str | None:
         return self._error
 
-    def say(self, callsign: str) -> None:
-        self._items.put(callsign)
+    def say(self, callsign: str, speed: int = 1) -> None:
+        if speed not in SPEED_VARIANTS:
+            raise ValueError(f"Unknown speech speed: {speed}")
+        self._items.put((callsign, speed))
 
     def close(self) -> None:
         if self._error is None:
             self._items.put(None)
 
     def _validate(self) -> str | None:
-        missing = [token for token in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" if not self._clips(token)]
-        if not self._clips("/"):
-            missing.append("/")
+        tokens = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/"
+        missing = [
+            f"{token} ({label})"
+            for token in tokens
+            for label, variant in SPEEDS
+            if not self._clips(token, variant)
+        ]
         if missing:
             return "Audio assets are missing. Run: python -m scripts.generate_audio_assets"
         if sys.platform == "win32":
@@ -49,9 +55,9 @@ class SpeechEngine:
             return "No WAV player found (install paplay, aplay, or afplay)."
         return None
 
-    def _clips(self, character: str) -> tuple[Path, ...]:
+    def _clips(self, character: str, speed: int) -> tuple[Path, ...]:
         token = "stroke" if character == "/" else character.upper()
-        return tuple(sorted(self._asset_dir.glob(f"{token}-*.wav")))
+        return tuple(sorted(self._asset_dir.glob(f"{token}-{speed}.wav")))
 
     @staticmethod
     def _player_names() -> tuple[str, ...]:
@@ -59,8 +65,8 @@ class SpeechEngine:
             return ("afplay",)
         return ("paplay", "aplay")
 
-    def _build_wav(self, callsign: str, destination: Path) -> None:
-        clips = [random.choice(self._clips(character)) for character in callsign.upper()]
+    def _build_wav(self, callsign: str, destination: Path, speed: int = 1) -> None:
+        clips = [self._clips(character, speed)[0] for character in callsign.upper()]
         params = None
         chunks: list[bytes] = []
 
@@ -110,15 +116,16 @@ class SpeechEngine:
 
     def _worker(self) -> None:
         while True:
-            callsign = self._items.get()
-            if callsign is None:
+            item = self._items.get()
+            if item is None:
                 return
+            callsign, speed = item
 
             path: Path | None = None
             try:
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temporary:
                     path = Path(temporary.name)
-                self._build_wav(callsign, path)
+                self._build_wav(callsign, path, speed)
                 self._play(path)
             except Exception as exc:
                 self._error = f"Could not play speech: {exc}"
