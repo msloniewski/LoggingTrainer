@@ -24,8 +24,8 @@ sudo apt install python3-tk pulseaudio-utils
 ```
 
 Keyboard controls: Enter starts the first question and checks an answer; F2
-repeats the callsign. Use the Normal, Fast, and Super Fast controls to change
-the delivery speed.
+repeats the callsign. Use the controls to change the delivery speed and switch
+between the male Michael and female Heart voices.
 
 ## Audio assets
 
@@ -37,12 +37,13 @@ The trainer assembles callsigns from pre-generated NATO phonetic WAV files in
 ```
 
 The first run uses `uv` to create a Python 3.12 `.venv-kokoro`, installs Kokoro,
-and downloads its voice model. The generator uses Michael (`am_michael`) by
-default and creates normal, fast, and super-fast versions of each NATO or contest
-phonetic, digit, and the word `stroke`. Existing files are skipped; pass `--force` to regenerate
-them with Michael. Audio generation uses FFmpeg to trim silence from each clip,
-and Kokoro English generation requires eSpeak NG. On Debian/Ubuntu install both
-with `sudo apt install ffmpeg espeak-ng`.
+and downloads its voice model. The generator creates Michael (`am_michael`) and
+Heart (`af_heart`) voices, with normal, fast, and super-fast versions of each
+NATO or contest phonetic, digit, and the word `stroke`. Existing files are
+skipped; pass `--force` to regenerate them. To generate only one voice, pass
+`--voice am_michael` or `--voice af_heart`. Audio generation uses FFmpeg to trim
+silence from each clip, and Kokoro English generation requires eSpeak NG. On
+Debian/Ubuntu install both with `sudo apt install ffmpeg espeak-ng`.
 
 The included voice assets are AI-generated.
 

@@ -46,6 +46,27 @@ class SpeechEngineTests(unittest.TestCase):
             with wave.open(str(destination), "rb") as phrase:
                 self.assertEqual(phrase.getnframes(), 250)
 
+    def test_build_wav_uses_selected_voice(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            asset_dir = Path(directory)
+            female_dir = asset_dir / "af_heart"
+            female_dir.mkdir()
+            self._write_clip(asset_dir / "A-alpha-1.wav", frames=100)
+            self._write_clip(female_dir / "A-alpha-1.wav", frames=250)
+            destination = asset_dir / "phrase.wav"
+
+            engine = SpeechEngine.__new__(SpeechEngine)
+            engine._asset_dir = asset_dir
+            engine._gap_ms = 90
+            engine._build_wav(
+                "A",
+                destination,
+                voice="af_heart",
+                pronunciations={"A": "Alpha"},
+            )
+
+            with wave.open(str(destination), "rb") as phrase:
+                self.assertEqual(phrase.getnframes(), 250)
     def test_repeated_letter_uses_the_same_phonetic(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             asset_dir = Path(directory)

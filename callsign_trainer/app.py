@@ -5,15 +5,15 @@ import tkinter as tk
 from tkinter import ttk
 
 from .callsigns import generate_callsign, normalize_callsign
-from .speech import SPEEDS, SpeechEngine
+from .speech import DEFAULT_VOICE, SPEEDS, VOICES, SpeechEngine
 
 
 class TrainerApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Callsign Logging Trainer")
-        self.geometry("560x450")
-        self.minsize(480, 420)
+        self.geometry("560x500")
+        self.minsize(480, 470)
 
         self._rng = random.Random()
         self._speech = SpeechEngine()
@@ -26,6 +26,7 @@ class TrainerApp(tk.Tk):
         self.status = tk.StringVar(value="Press Enter to hear the first callsign.")
         self.score = tk.StringVar(value="Correct: 0    Questions: 0")
         self.speed = tk.IntVar(value=1)
+        self.voice = tk.StringVar(value=DEFAULT_VOICE)
 
         self._build_ui()
         self.entry.focus_set()
@@ -57,6 +58,13 @@ class TrainerApp(tk.Tk):
                 row=0, column=column, padx=8
             )
 
+        voices = ttk.LabelFrame(root, text="Voice", padding=(12, 6))
+        voices.pack(pady=(12, 0))
+        for column, (label, voice) in enumerate(VOICES):
+            ttk.Radiobutton(voices, text=label, variable=self.voice, value=voice).grid(
+                row=0, column=column, padx=8
+            )
+
         ttk.Separator(root).pack(fill="x", pady=20)
         ttk.Label(root, textvariable=self.score, font=("TkDefaultFont", 12, "bold")).pack(pady=(0, 14))
         ttk.Label(root, textvariable=self.status, anchor="center", wraplength=500).pack(fill="x")
@@ -76,7 +84,7 @@ class TrainerApp(tk.Tk):
         if self._speech.error:
             self.status.set(self._speech.error)
             return
-        self._speech.say(self._callsign, self.speed.get())
+        self._speech.say(self._callsign, self.speed.get(), self.voice.get())
 
     def _submit(self, _event: object | None = None) -> None:
         if not self._callsign:

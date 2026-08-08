@@ -9,6 +9,7 @@ import subprocess
 import wave
 
 from callsign_trainer.callsigns import PHONETICS
+from callsign_trainer.speech import DEFAULT_VOICE, VOICES
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -71,11 +72,17 @@ def _trim_silence(path: Path, padding_ms: int = 12) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--voice", default="am_michael", help="Kokoro voice")
+    parser.add_argument(
+        "--voice",
+        action="append",
+        choices=[voice for _label, voice in VOICES],
+        help="Kokoro voice to generate; repeat for multiple voices (default: all)",
+    )
     parser.add_argument("--variants", type=int, default=3, choices=range(1, 4))
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--force", action="store_true", help="replace existing assets")
     args = parser.parse_args()
+    voices = args.voice or [voice for _label, voice in VOICES]
 
     if not shutil.which("ffmpeg"):
         parser.error("FFmpeg is required to trim generated audio")
@@ -86,35 +93,38 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     pipeline = KPipeline(lang_code="a")
-    total = sum(len(words) for words in PHONETICS.values()) * args.variants
+    total = sum(len(words) for words in PHONETICS.values()) * args.variants * len(voices)
     generated = 0
 
-    for character, words in PHONETICS.items():
-        for word in words:
-            for variant in range(1, args.variants + 1):
-                destination = args.output / _asset_name(character, word, variant)
-                if destination.exists() and not args.force:
-                    continue
+    for voice in voices:
+        output_dir = args.output if voice == DEFAULT_VOICE else args.output / voice
+        output_dir.mkdir(parents=True, exist_ok=True)
+        for character, words in PHONETICS.items():
+            for word in words:
+                for variant in range(1, args.variants + 1):
+                    destination = output_dir / _asset_name(character, word, variant)
+                    if destination.exists() and not args.force:
+                        continue
 
-                print(f"Generating {destination.name} ({generated + 1}/{total})")
-                temporary = destination.with_suffix(".tmp.wav")
-                try:
-                    segments = [
-                        audio
-                        for _graphemes, _phonemes, audio in pipeline(
-                            word,
-                            voice=args.voice,
-                            speed=VARIANT_SPEEDS[variant - 1],
-                        )
-                    ]
-                    if not segments:
-                        raise RuntimeError(f"Kokoro returned no audio for {word}")
-                    sf.write(temporary, np.concatenate(segments), 24_000, subtype="PCM_16")
-                    _trim_silence(temporary)
-                    temporary.replace(destination)
-                finally:
-                    temporary.unlink(missing_ok=True)
-                generated += 1
+                    print(f"Generating {voice}/{destination.name} ({generated + 1}/{total})")
+                    temporary = destination.with_suffix(".tmp.wav")
+                    try:
+                        segments = [
+                            audio
+                            for _graphemes, _phonemes, audio in pipeline(
+                                word,
+                                voice=voice,
+                                speed=VARIANT_SPEEDS[variant - 1],
+                            )
+                        ]
+                        if not segments:
+                            raise RuntimeError(f"Kokoro returned no audio for {word}")
+                        sf.write(temporary, np.concatenate(segments), 24_000, subtype="PCM_16")
+                        _trim_silence(temporary)
+                        temporary.replace(destination)
+                    finally:
+                        temporary.unlink(missing_ok=True)
+                    generated += 1
 
     print(f"Generated {generated} file(s) in {args.output}")
 
