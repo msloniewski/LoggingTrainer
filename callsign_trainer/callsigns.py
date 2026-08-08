@@ -24,6 +24,23 @@ PHONETIC = {
     "/": "stroke",
 }
 
+ALTERNATIVE_PHONETICS = {
+    "A": ("America",), "B": ("Boston",), "C": ("Canada",),
+    "D": ("Denmark",), "E": ("England",), "F": ("France",),
+    "G": ("Germany",), "H": ("Honolulu",), "I": ("Italy",),
+    "J": ("Japan",), "K": ("Kilowatt",), "L": ("London",),
+    "M": ("Mexico",), "N": ("Norway",), "O": ("Ontario",),
+    "P": ("Portugal",), "Q": ("Queen",), "R": ("Radio",),
+    "S": ("Santiago",), "T": ("Tokyo",), "U": ("United",),
+    "V": ("Victoria",), "W": ("Washington",), "X": ("Xylophone",),
+    "Y": ("Yokohama",), "Z": ("Zanzibar",),
+}
+
+PHONETICS = {
+    character: (word, *ALTERNATIVE_PHONETICS.get(character, ()))
+    for character, word in PHONETIC.items()
+}
+
 
 @dataclass(frozen=True)
 class CallPattern:
@@ -78,4 +95,3 @@ def generate_callsign(rng: random.Random | None = None) -> tuple[str, str]:
     digit = "" if prefix[-1].isdigit() else rng.choice(pattern.district_digits)
     suffix = "".join(rng.choice(LETTERS) for _ in range(rng.choice(pattern.suffix_lengths)))
     return prefix + digit + suffix, pattern.region
-

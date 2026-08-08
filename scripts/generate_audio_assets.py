@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import wave
 
-from callsign_trainer.callsigns import PHONETIC
+from callsign_trainer.callsigns import PHONETICS
 
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
@@ -16,9 +16,11 @@ DEFAULT_OUTPUT_DIR = PROJECT_DIR / "assets" / "audio"
 VARIANT_SPEEDS = (1.0, 1.25, 1.5)
 
 
-def _asset_name(character: str, variant: int) -> str:
-    token = "stroke" if character == "/" else character.upper()
-    return f"{token}-{variant}.wav"
+def _asset_name(character: str, word: str, variant: int) -> str:
+    if character == "/":
+        return f"stroke-{variant}.wav"
+    slug = word.lower().replace(" ", "-")
+    return f"{character.upper()}-{slug}-{variant}.wav"
 
 
 def _trim_silence(path: Path, padding_ms: int = 12) -> None:
@@ -84,34 +86,35 @@ def main() -> None:
 
     args.output.mkdir(parents=True, exist_ok=True)
     pipeline = KPipeline(lang_code="a")
-    total = len(PHONETIC) * args.variants
+    total = sum(len(words) for words in PHONETICS.values()) * args.variants
     generated = 0
 
-    for character, word in PHONETIC.items():
-        for variant in range(1, args.variants + 1):
-            destination = args.output / _asset_name(character, variant)
-            if destination.exists() and not args.force:
-                continue
+    for character, words in PHONETICS.items():
+        for word in words:
+            for variant in range(1, args.variants + 1):
+                destination = args.output / _asset_name(character, word, variant)
+                if destination.exists() and not args.force:
+                    continue
 
-            print(f"Generating {destination.name} ({generated + 1}/{total})")
-            temporary = destination.with_suffix(".tmp.wav")
-            try:
-                segments = [
-                    audio
-                    for _graphemes, _phonemes, audio in pipeline(
-                        word,
-                        voice=args.voice,
-                        speed=VARIANT_SPEEDS[variant - 1],
-                    )
-                ]
-                if not segments:
-                    raise RuntimeError(f"Kokoro returned no audio for {word}")
-                sf.write(temporary, np.concatenate(segments), 24_000, subtype="PCM_16")
-                _trim_silence(temporary)
-                temporary.replace(destination)
-            finally:
-                temporary.unlink(missing_ok=True)
-            generated += 1
+                print(f"Generating {destination.name} ({generated + 1}/{total})")
+                temporary = destination.with_suffix(".tmp.wav")
+                try:
+                    segments = [
+                        audio
+                        for _graphemes, _phonemes, audio in pipeline(
+                            word,
+                            voice=args.voice,
+                            speed=VARIANT_SPEEDS[variant - 1],
+                        )
+                    ]
+                    if not segments:
+                        raise RuntimeError(f"Kokoro returned no audio for {word}")
+                    sf.write(temporary, np.concatenate(segments), 24_000, subtype="PCM_16")
+                    _trim_silence(temporary)
+                    temporary.replace(destination)
+                finally:
+                    temporary.unlink(missing_ok=True)
+                generated += 1
 
     print(f"Generated {generated} file(s) in {args.output}")
 

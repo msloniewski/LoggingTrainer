@@ -2,7 +2,7 @@
 
 A small cross-platform GUI for practising contest callsign copy. It generates
 plausible callsigns from representative worldwide amateur prefixes, reads them
-with NATO phonetics, and checks the typed answer.
+with NATO and common contest phonetics, and checks the typed answer.
 
 ## Run
 
@@ -38,8 +38,8 @@ The trainer assembles callsigns from pre-generated NATO phonetic WAV files in
 
 The first run uses `uv` to create a Python 3.12 `.venv-kokoro`, installs Kokoro,
 and downloads its voice model. The generator uses Michael (`am_michael`) by
-default and creates normal, fast, and super-fast versions of each letter, digit,
-and the word `stroke`. Existing files are skipped; pass `--force` to regenerate
+default and creates normal, fast, and super-fast versions of each NATO or contest
+phonetic, digit, and the word `stroke`. Existing files are skipped; pass `--force` to regenerate
 them with Michael. Audio generation uses FFmpeg to trim silence from each clip,
 and Kokoro English generation requires eSpeak NG. On Debian/Ubuntu install both
 with `sudo apt install ffmpeg espeak-ng`.
