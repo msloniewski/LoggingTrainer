@@ -4,3 +4,5 @@ __pycache__/
 .venv-audio/
 .venv-kokoro/
 .venv-tools/
+build/
+dist/

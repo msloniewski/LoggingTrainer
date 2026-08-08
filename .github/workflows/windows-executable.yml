@@ -1,0 +1,72 @@
+name: Build Windows executable
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  generate-audio:
+    name: Generate audio
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-audio.txt
+
+      - name: Install system audio tools
+        run: sudo apt-get update && sudo apt-get install --yes espeak-ng ffmpeg
+
+      - name: Install audio generator
+        run: python -m pip install -r requirements-audio.txt
+
+      - name: Generate audio assets
+        run: python -m scripts.generate_audio_assets
+
+      - name: Upload generated audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-audio
+          path: assets/audio
+          if-no-files-found: error
+          retention-days: 1
+
+  build-windows:
+    name: Build Windows executable
+    needs: generate-audio
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-build.txt
+
+      - name: Download generated audio
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-audio
+          path: assets/audio
+
+      - name: Install application packager
+        run: python -m pip install -r requirements-build.txt
+
+      - name: Build executable
+        run: pyinstaller --noconfirm --clean LoggingTrainer.spec
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: LoggingTrainer-windows
+          path: dist/LoggingTrainer.exe
+          if-no-files-found: error
