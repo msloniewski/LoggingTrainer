@@ -65,7 +65,8 @@ python -m unittest discover -v
 The `Build Windows executable` GitHub Actions workflow can be run manually or
 by pushing a tag beginning with `v`. It generates all audio on Linux, transfers
 only the finished WAV files to a Windows runner, and publishes
-`LoggingTrainer-windows` as a downloadable workflow artifact.
+`LoggingTrainer-windows` as a downloadable workflow artifact. For `v*` tags,
+it also creates a GitHub release with `LoggingTrainer.exe` attached.
 
 The packaged `LoggingTrainer.exe` includes the audio and does not include or
 require Kokoro, Torch, FFmpeg, eSpeak NG, or Python at runtime.

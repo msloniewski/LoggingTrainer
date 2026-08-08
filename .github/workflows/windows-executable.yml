@@ -7,7 +7,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-audio:
@@ -70,3 +70,10 @@ jobs:
           name: LoggingTrainer-windows
           path: dist/LoggingTrainer.exe
           if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/LoggingTrainer.exe
+          generate_release_notes: true
