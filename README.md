@@ -23,8 +23,9 @@ Linux audio playback requires PulseAudio's `paplay` or ALSA's `aplay`:
 sudo apt install python3-tk pulseaudio-utils
 ```
 
-Keyboard controls: Enter checks an answer and F2 repeats the callsign. Use the
-Normal, Fast, and Super Fast controls to change the delivery speed.
+Keyboard controls: Enter starts the first question and checks an answer; F2
+repeats the callsign. Use the Normal, Fast, and Super Fast controls to change
+the delivery speed.
 
 ## Audio assets
 
